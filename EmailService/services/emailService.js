@@ -12,8 +12,11 @@ const getTransporter = () => {
   if (!transporter) {
     // Validate credentials before creating transporter
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error('❌ Email credentials missing: EMAIL_USER and EMAIL_PASS environment variables are required');
       throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
     }
+
+    console.log('📧 Creating email transporter with user:', process.env.EMAIL_USER?.substring(0, 5) + '***');
 
     transporter = nodemailer.createTransport({
       service: process.env.EMAIL_SERVICE || 'gmail',
@@ -26,7 +29,8 @@ const getTransporter = () => {
     // Verify transporter configuration (async, non-blocking)
     transporter.verify((error, success) => {
       if (error) {
-        console.error('❌ Email transporter configuration error:', error);
+        console.error('❌ Email transporter configuration error:', error.message);
+        console.error('   Check your EMAIL_USER and EMAIL_PASS in Vercel environment variables');
       } else {
         console.log('✅ Email server is ready to send emails');
       }

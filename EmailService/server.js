@@ -7,14 +7,19 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Trust proxy - Required for Vercel deployment
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
 
-// Rate Limiting
+// Rate Limiting - Compatible with Vercel proxy
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 20 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -46,6 +51,28 @@ app.get('/health', (req, res) => {
     status: 'healthy', 
     service: 'Email Service',
     timestamp: new Date().toISOString()
+  });
+});
+
+// Environment Variables Check (for debugging)
+app.get('/api/config/check', (req, res) => {
+  const hasEmailUser = !!process.env.EMAIL_USER;
+  const hasEmailPass = !!process.env.EMAIL_PASS;
+  const hasMongoUri = !!process.env.MONGODB_URI;
+  
+  res.json({
+    environment: process.env.NODE_ENV || 'development',
+    emailConfigured: hasEmailUser && hasEmailPass,
+    details: {
+      EMAIL_USER: hasEmailUser ? `${process.env.EMAIL_USER?.substring(0, 5)}***` : '❌ MISSING',
+      EMAIL_PASS: hasEmailPass ? '✅ SET' : '❌ MISSING',
+      EMAIL_SERVICE: process.env.EMAIL_SERVICE || 'gmail (default)',
+      MONGODB_URI: hasMongoUri ? '✅ SET' : '❌ MISSING',
+      ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || '❌ MISSING'
+    },
+    message: (hasEmailUser && hasEmailPass) 
+      ? '✅ Email credentials are configured' 
+      : '❌ EMAIL_USER and/or EMAIL_PASS are missing. Set them in Vercel environment variables.'
   });
 });
 
