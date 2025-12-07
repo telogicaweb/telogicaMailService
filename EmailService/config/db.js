@@ -2,12 +2,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    if (!process.env.MONGODB_URI) {
-      console.warn('MongoDB URI not provided. Email logs will not be saved.');
-      return null;
-    }
-
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect("mongodb+srv://telogicaweb_db_user:20QPL6ImQUwM6jIo@cluster0.oe3jl52.mongodb.net/?appName=Cluster0");
     console.log('✅ MongoDB connected for Email Service');
     return mongoose.connection;
   } catch (error) {
