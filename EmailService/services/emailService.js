@@ -4,23 +4,36 @@ const connectDB = require('../config/db');
 // Connect to MongoDB for email logs
 connectDB();
 
-// Create email transporter
-const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+// Transporter instance (created lazily)
+let transporter = null;
 
-// Verify transporter configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Email transporter configuration error:', error);
-  } else {
-    console.log('✅ Email server is ready to send emails');
+// Create or get email transporter
+const getTransporter = () => {
+  if (!transporter) {
+    // Validate credentials before creating transporter
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
+    }
+
+    transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE || 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    // Verify transporter configuration (async, non-blocking)
+    transporter.verify((error, success) => {
+      if (error) {
+        console.error('❌ Email transporter configuration error:', error);
+      } else {
+        console.log('✅ Email server is ready to send emails');
+      }
+    });
   }
-});
+  return transporter;
+};
 
 // Send Email Function with Logging
 const sendEmail = async (to, subject, text, emailType, relatedEntity = null, html = null) => {
@@ -84,6 +97,9 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
 
   // Send email
   try {
+    // Get transporter instance
+    const emailTransporter = getTransporter();
+    
     const mailOptions = {
       from: `${process.env.EMAIL_FROM_NAME || 'Telogica'} <${process.env.EMAIL_USER}>`,
       to,
@@ -92,7 +108,7 @@ const sendEmail = async (to, subject, text, emailType, relatedEntity = null, htm
       html: html || text
     };
     
-    const info = await transporter.sendMail(mailOptions);
+    const info = await emailTransporter.sendMail(mailOptions);
     console.log('✅ Email sent successfully to:', to, '| MessageID:', info.messageId);
     
     // Update email log status to sent
